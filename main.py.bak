@@ -1,0 +1,72 @@
+# -*- coding: utf-8 -*-
+import tkinter as tk
+from tkinter import messagebox
+import pyautogui
+import sys
+import os
+import settings
+from modules import sequence
+
+# Zmienna przechowująca wybraną funkcję do uruchomienia
+SELECTED_FUNCTION = None
+
+def setup_console_buffer():
+    os.system("mode con: cols=140 lines=9000")
+    os.system("title Rail Nation Bot - Console")
+
+def get_gui_geometry():
+    screen_w, screen_h = pyautogui.size()
+    if screen_w == 3840: return "915x888+1437+418"
+    elif screen_w == 1920 or screen_w == 1536: return "480x452+687+196"
+    else: return "500x550+100+100"
+
+def start_gui(geometry):
+    global SELECTED_FUNCTION
+    root = tk.Tk()
+    root.title("Centrum Sterowania Botami")
+    if geometry: root.geometry(geometry)
+    root.configure(bg="#2b2b2b")
+
+    lbl_title = tk.Label(root, text="Wybierz tryb pracy:", font=("Arial", 14, "bold"), fg="white", bg="#2b2b2b")
+    lbl_title.pack(pady=15)
+
+    def set_bot1_mode(mode_name, img_name):
+        global SELECTED_FUNCTION
+        print(f"[GUI] Wybrano: {mode_name}")
+        sequence.set_farming_mode(img_name)
+        SELECTED_FUNCTION = sequence.contest_loop
+        root.destroy()
+
+    btn_style = {"font": ("Arial", 11), "width": 35, "height": 1}
+    
+    # Sekcja Farming
+    tk.Label(root, text="--- Farming & Konkursy ---", font=("Arial", 10), fg="#aaa", bg="#2b2b2b").pack(pady=5)
+    tk.Button(root, text="Farming: MAGAZYNY", command=lambda: set_bot1_mode("Magazyny", "farm_magazyny.png"), **btn_style).pack(pady=2)
+    tk.Button(root, text="Farming: MIASTA", command=lambda: set_bot1_mode("Miasta", "farm_miasta.png"), **btn_style).pack(pady=2)
+    tk.Button(root, text="Farming: KARIERA", command=lambda: set_bot1_mode("Kariera", "Career_engine.png"), **btn_style).pack(pady=2)
+    
+    # Sekcja Kalkulatora (z reklamami)
+    tk.Button(root, text="KALKULATOR + REKLAMY", command=lambda: set_bot1_mode("Kalkulator", "Timetable_calculator.png"), **btn_style, bg="#004400", fg="white").pack(pady=10)
+    
+    # Domyślny
+    tk.Button(root, text="START STANDARD (Rozkład Zapisany)", command=lambda: set_bot1_mode("Default", "rozklad_zapisany.png"), **btn_style, bg="#444", fg="white").pack(pady=5)
+
+    root.mainloop()
+
+if __name__ == "__main__":
+    setup_console_buffer()
+    gui_geom = get_gui_geometry()
+    
+    try:
+        start_gui(gui_geom)
+    except Exception as e:
+        print(f"[ERROR GUI] Nie udało się uruchomić okienka: {e}")
+    
+    if SELECTED_FUNCTION:
+        print(f"--- Uruchamianie wybranego modułu... ---")
+        try:
+            SELECTED_FUNCTION()
+        except KeyboardInterrupt:
+            print("\nZatrzymano przez użytkownika.")
+    else:
+        print("Nie wybrano żadnego trybu. Zamykanie.")
