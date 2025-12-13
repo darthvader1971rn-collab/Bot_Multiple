@@ -59,28 +59,6 @@ def get_image_coords(image_name, region=None):
             return pyautogui.locateCenterOnScreen(image_path, confidence=0.8, grayscale=True)
     except: return None
 
-def check_exists(image_name, region=None):
-    """Sprawdza czy obrazek istnieje (bez klikania)."""
-    image_path = os.path.join(settings.GRAPHICS_PATH, image_name)
-    if not os.path.exists(image_path): return False
-    try:
-        if region and region != (0,0,0,0):
-            return pyautogui.locateOnScreen(image_path, region=region, confidence=0.8, grayscale=True) is not None
-        else:
-            return pyautogui.locateOnScreen(image_path, confidence=0.8, grayscale=True) is not None
-    except: return False
-
-def perform_hard_click(x, y):
-    """
-    Centralna funkcja do 'twardego' klikania.
-    """
-    pyautogui.moveTo(x, y, duration=0.3)
-    time.sleep(0.1)
-    pyautogui.mouseDown()
-    time.sleep(0.15) 
-    pyautogui.mouseUp()
-    time.sleep(0.5) 
-
 def click_image(image_name, retry=3, region=None):
     image_path = os.path.join(settings.GRAPHICS_PATH, image_name)
     if not os.path.exists(image_path): return False
@@ -93,9 +71,9 @@ def click_image(image_name, retry=3, region=None):
                 location = pyautogui.locateCenterOnScreen(image_path, confidence=0.8, grayscale=True)
             
             if location:
-                logging.info(f"Znaleziono {image_name}. Hard Click.")
-                perform_hard_click(location.x, location.y)
-                time.sleep(0.5) 
+                pyautogui.click(location)
+                logging.info(f"Kliknięto: {image_name}")
+                time.sleep(1)
                 return True
             time.sleep(0.5)
         except: pass
@@ -104,26 +82,18 @@ def click_image(image_name, retry=3, region=None):
 def click_from_csv_center(csv_path, description):
     region = load_region(csv_path)
     if region == (0,0,0,0): return False
-    
-    cx = region[0] + region[2] // 2
-    cy = region[1] + region[3] // 2
-    
-    logging.info(f"Kliknięcie (CSV Hard) w {description}")
-    perform_hard_click(cx, cy)
-    time.sleep(0.5)
+    pyautogui.click(region[0] + region[2] // 2, region[1] + region[3] // 2)
+    logging.info(f"Kliknięcie (Fallback/CSV) w {description}")
+    time.sleep(1)
     return True
 
-def perform_drag_from_listing(distance=-400):
+def perform_drag_from_listing():
     region = load_region(settings.CSV_REGION_LISTING)
     if region == (0,0,0,0): return
-    
-    cx = region[0] + region[2] // 2
-    cy = region[1] + region[3] // 2
-    
-    pyautogui.moveTo(cx, cy)
-    time.sleep(0.3)
-    pyautogui.dragRel(0, distance, duration=0.5, button='left')
-    time.sleep(1)
+    pyautogui.moveTo(region[0] + region[2] // 2, region[1] + region[3] // 2)
+    time.sleep(0.5)
+    pyautogui.dragRel(0, -400, duration=1.0, button='left')
+    time.sleep(2)
 
 def ocr_region(region, debug_filename=None):
     for attempt in range(3):
@@ -147,138 +117,78 @@ def ocr_region(region, debug_filename=None):
     return ""
 
 def wake_mouse():
-    screen_w, screen_h = pyautogui.size()
-    if screen_w == 3840: tx, ty = 200, 200
-    else: tx, ty = 100, 100
-        
-    pyautogui.moveTo(tx, ty, duration=0.2)
-    pyautogui.moveRel(10, 0)
-    pyautogui.moveRel(-10, 0)
-    pyautogui.click() 
-    logging.info(f"Wake Up -> Kliknięto w ({tx}, {ty})")
+    # Bazowe wartości dla 4K
+    base_x = 10
+    base_y = 1080
+    base_move = 10
 
-def park_mouse_away():
-    pyautogui.moveTo(100, 100, duration=0.2)
+    # Przeliczanie przy użyciu scale_factor z settings
+    target_x = int(base_x * settings.scale_factor)
+    target_y = int(base_y * settings.scale_factor)
+    move_px = int(base_move * settings.scale_factor)
 
-# --- FUNKCJA ZAMYKANIA OKNA (NOWOŚĆ) ---
-
-def close_game_window():
-    """
-    Zamyka okno gry.
-    - Pauza 1.5s przed.
-    - Dla FHD (1920) / Laptop: Klika w środek 'prostokat_closed.csv'.
-    - Dla 4K: Klika w 'closed.png'.
-    - Pauza 1.5s po.
-    """
-    time.sleep(1.5)
+    # Ruch do przeskalowanej pozycji
+    pyautogui.moveTo(target_x, target_y, duration=0.2)
     
-    screen_w, screen_h = pyautogui.size()
+    # Ruch w GÓRĘ (wartość ujemna na osi Y)
+    pyautogui.moveRel(0, -move_px, duration=0.1)
     
-    # Obsługa FHD i mniejszych (Laptop)
-    if screen_w == 1920 or screen_w == 1536:
-        csv_name = "prostokat_closed.csv"
-        csv_path = os.path.join(settings.CONFIG_PATH, csv_name)
-        
-        if os.path.exists(csv_path):
-            logging.info(f"[CLOSE] Zamykanie przez CSV (Hard Click): {csv_name}")
-            click_from_csv_center(csv_path, "Przycisk Zamknij (CSV)")
-        else:
-            logging.warning(f"[CLOSE] Brak pliku {csv_name}! Próbuję awaryjnie PNG.")
-            click_image("closed.png", retry=3)
-    else:
-        # Obsługa 4K lub inna
-        logging.info("[CLOSE] Zamykanie przez 'closed.png' (4K/Inne).")
-        click_image("closed.png", retry=3)
-        
-    time.sleep(1.5)
+    # Powrót (w dół)
+    pyautogui.moveRel(0, move_px, duration=0.1)
 
 # --- SEKWENCJA AWARYJNA (RESTART) ---
-
-def get_current_url():
-    """Pobiera URL z przeglądarki (Ctrl+L, Ctrl+C)."""
-    try:
-        pyautogui.hotkey('ctrl', 'l')
-        time.sleep(0.5)
-        pyautogui.hotkey('ctrl', 'c')
-        time.sleep(0.5)
-        wake_mouse()
-        
-        root = tk.Tk()
-        root.withdraw()
-        url = root.clipboard_get()
-        root.destroy()
-        return url
-    except: return ""
-
-def find_server_text_hard_ocr(keywords_to_find):
-    try:
-        s_width, s_height = pyautogui.size()
-        scan_reg = (int(s_width*0.1), int(s_height*0.1), int(s_width*0.8), int(s_height*0.8))
-        
-        screenshot = pyautogui.screenshot(region=scan_reg)
-        gray = ImageOps.grayscale(screenshot)
-        bw = gray.point(lambda p: 255 if p > 180 else 0) 
-        
-        data = pytesseract.image_to_data(bw, output_type=pytesseract.Output.DICT)
-        
-        for i, text in enumerate(data["text"]):
-            text = text.strip()
-            if len(text) < 3: continue
-            
-            for key in keywords_to_find:
-                if key.lower() in text.lower():
-                    center_x = scan_reg[0] + data["left"][i] + data["width"][i] // 2
-                    center_y = scan_reg[1] + data["top"][i] + data["height"][i] // 2
-                    logging.info(f"[LOBBY OCR] Znaleziono serwer: '{text}' (klucz: {key}) w ({center_x}, {center_y})")
-                    return (center_x, center_y)
-        return None
-    except Exception as e:
-        logging.error(f"[LOBBY OCR] Błąd: {e}")
-        return None
 
 def execute_emergency_reconnect():
     logging.warning("!!! URUCHAMIAM PROCEDURE AWARYJNEGO RESTARTU !!!")
     
-    current_url = get_current_url()
-    target_server_keywords = []
-    
-    if "us103" in current_url: target_server_keywords = ["US103", "Broadway"]
-    elif "us102" in current_url: target_server_keywords = ["US102", "Grand"]
-    elif "m5201" in current_url: target_server_keywords = ["Odyssey", "INT5201"]
-    else: target_server_keywords = ["US103", "Broadway", "US102", "Grand", "Odyssey"]
-        
-    logging.info(f"[RESTART] Cel: Znaleźć serwer pasujący do: {target_server_keywords}")
-
-    logging.info("[RESTART] Wchodzę do Lobby...")
+    # 1. Focus na pasek adresu
+    logging.info("[RESTART] Klikam pasek adresu (Ctrl+L)...")
     pyautogui.hotkey('ctrl', 'l')
     time.sleep(1)
-    pyautogui.write("https://lobby.rail-nation.com/#/start")
+    
+    # 2. Wpisanie Lobby
+    lobby_url = "https://lobby.rail-nation.com/#/start"
+    logging.info(f"[RESTART] Wpisuje URL: {lobby_url}")
+    pyautogui.write(lobby_url)
     pyautogui.press('enter')
     
-    logging.info("[RESTART] Czekam 40s na załadowanie Lobby...")
-    time.sleep(40)
+    # 3. Czekanie na załadowanie
+    logging.info("[RESTART] Czekam 35s na zaladowanie Lobby...")
+    time.sleep(35)
     
-    server_clicked = False
+    # 4. Wybór serwera (Szukamy przycisku Play lub nazwy serwera)
+    logging.info("[RESTART] Szukam serwera/przycisku wejscia...")
     
-    for i in range(3):
-        logging.info(f"[RESTART] Próba znalezienia serwera {i+1}/3")
-        
-        coords = find_server_text_hard_ocr(target_server_keywords)
-        if coords:
-            perform_hard_click(coords[0], coords[1])
-            server_clicked = True
-            break
+    if click_image("enter_world.png", retry=2):
+        logging.info("[RESTART] Kliknieto Enter World (PNG).")
+    else:
+        # Fallback: Kliknięcie w potencjalne miejsce ostatnio granego świata
+        try:
+            s_width, s_height = pyautogui.size()
+            scan_reg = (s_width//4, s_height//4, s_width//2, s_height//2)
+            found_text_data = pytesseract.image_to_data(
+                pyautogui.screenshot(region=scan_reg), 
+                output_type=pytesseract.Output.DICT
+            )
             
-        logging.info("[RESTART] Nie widzę nazwy serwera. Przewijam listę (Scroll)...")
-        w, h = pyautogui.size()
-        pyautogui.moveTo(w // 2, h // 2)
-        pyautogui.scroll(-300) 
-        time.sleep(2)
-    
-    if not server_clicked:
-        logging.error("[RESTART] KRYTYCZNE: Nie znaleziono właściwego serwera w Lobby.")
-        return
+            clicked = False
+            for i, text in enumerate(found_text_data["text"]):
+                if "Play" in text or "Enter" in text or "US" in text or "World" in text:
+                    x = scan_reg[0] + found_text_data["left"][i] + found_text_data["width"][i] // 2
+                    y = scan_reg[1] + found_text_data["top"][i] + found_text_data["height"][i] // 2
+                    pyautogui.click(x, y)
+                    logging.info(f"[RESTART] Kliknieto tekst: {text}")
+                    clicked = True
+                    break
+            
+            if not clicked:
+                logging.warning("[RESTART] Nie znaleziono tekstu serwera. Klikam na oślep (Play Position).")
+                pyautogui.click(s_width // 2, int(s_height * 0.6))
+                
+        except Exception as e:
+            logging.error(f"[RESTART] Blad OCR: {e}")
 
+    # 5. Czekanie na grę
     logging.info("[RESTART] Czekam 60s na zaladowanie gry...")
     time.sleep(60)
     logging.info("[RESTART] Procedura zakonczona. Wracam do petli.")
@@ -328,9 +238,9 @@ def monitor_contest():
 def get_next_calculator_slot():
     now = datetime.now()
     candidates = [
-        now.replace(minute=0, second=0, microsecond=0),
-        now.replace(minute=30, second=0, microsecond=0),
-        (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+        now.replace(minute=1, second=0, microsecond=0),
+        now.replace(minute=31, second=0, microsecond=0),
+        (now + timedelta(hours=1)).replace(minute=1, second=0, microsecond=0)
     ]
     future_slots = [t for t in candidates if t > now]
     if not future_slots: return candidates[-1]
@@ -345,6 +255,29 @@ def handle_wagons_logic():
 
 def smart_schedule_logic(reg_listing):
     logging.info("[SMART] Analiza pozycji rozkładów...")
+    
+    # --- NOWY BLOK: Zapisywanie zrzutu ekranu ---
+    try:
+        # Budowanie pełnej ścieżki: BASE_DIR + resources/img/en/Rozkłady
+        save_path = os.path.join(settings.BASE_DIR, "resources", "img", "en", "Rozkłady")
+        
+        # Tworzenie folderu jeśli nie istnieje
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+
+        # Generowanie unikalnej nazwy pliku z datą i godziną
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"schedule_check_{timestamp}.png"
+        full_file_path = os.path.join(save_path, filename)
+
+        # Wykonanie zrzutu regionu i zapis
+        pyautogui.screenshot(region=reg_listing).save(full_file_path)
+        logging.info(f"[SMART] Zapisano zrzut analizy: {filename}")
+        
+    except Exception as e:
+        logging.warning(f"[SMART] Błąd zapisu zrzutu ekranu: {e}")
+    # ---------------------------------------------
+
     keep_pos = get_image_coords("Keep_current_schedule.png", region=reg_listing)
     adopt_pos = get_image_coords("adopt_schedule.png", region=reg_listing)
     
@@ -397,89 +330,44 @@ def run_farming_calculator():
     logging.info("--- URUCHAMIAM KALKULATOR ---")
     reg_pociagi = load_region(settings.CSV_REGION_POCIAGI)
     
-    # 1. Otwórz okno
-    window_opened = False
-    for attempt in range(3): 
-        if click_image("lista_pociagow.png", retry=2, region=reg_pociagi):
-            time.sleep(2.5) 
-            if check_exists("closed.png"):
-                window_opened = True
-                break
-            else:
-                logging.warning(f"[FARMING] Brak okna. Próba {attempt+1}/3")
-                park_mouse_away()
-                time.sleep(1)
-        else:
-            logging.warning("[FARMING] Nie znaleziono ikony listy.")
-            
-    if not window_opened:
-        logging.error("[FARMING] Nie udało się otworzyć okna. Przerywam.")
-        return
-
-    park_mouse_away() 
-    
-    reg_listing = load_region(settings.CSV_REGION_LISTING)
-    reg_wagony = load_region(settings.CSV_REGION_WAGONY)
-    
-    # 2. Szukaj
-    found_engine = False
-    
-    logging.info("[FARMING] Szukam Career_engine (Bez Drag)...")
-    if click_image("Career_engine.png", retry=2, region=None):
-        found_engine = True
-    else:
-        logging.info("[FARMING] Nie widzę pociągu. Przewijam listę...")
-        perform_drag_from_listing(distance=-400)
-        park_mouse_away()
-        time.sleep(2)
-        
-        if click_image("Career_engine.png", retry=2, region=None):
-            found_engine = True
-    
-    if found_engine:
+    if click_image("lista_pociagow.png", retry=3, region=reg_pociagi):
         time.sleep(1)
-        if click_image("Timetable_calculator.png", retry=3, region=None):
+        perform_drag_from_listing()
+        time.sleep(1)
+        
+        reg_listing = load_region(settings.CSV_REGION_LISTING)
+        reg_wagony = load_region(settings.CSV_REGION_WAGONY)
+        
+        if click_image("Career_engine.png", retry=3, region=reg_listing):
             time.sleep(1)
-            
-            logging.info("[FARMING] Sprawdzam opłacalność (Keep vs Adopt)...")
-            keep_pos = get_image_coords("Keep_current_schedule.png", region=reg_listing)
-            adopt_pos = get_image_coords("adopt_schedule.png", region=reg_listing)
-            should_adopt = True
-            
-            if keep_pos and adopt_pos:
-                if keep_pos.y < adopt_pos.y:
-                    logging.info("[SMART] Keep wyżej. Zostawiam.")
-                    should_adopt = False
-                else:
-                    logging.info("[SMART] Adopt wyżej. Zmieniam.")
-            elif keep_pos and not adopt_pos:
-                logging.info("[SMART] Tylko Keep. Zostawiam.")
-                should_adopt = False
-            
-            if should_adopt:
-                click_image("adopt_schedule.png", region=reg_listing)
+            if click_image("Timetable_calculator.png", retry=3, region=reg_listing):
+                time.sleep(2) # Dajemy chwilę na załadowanie wyników kalkulacji
+                
+                # --- ZMIANA: Zamiast ślepego klikania Adopt, używamy Smart Logic + Screenshot ---
+                # To wywoła funkcję, która robi zdjęcie i decyduje Keep vs Adopt
+                smart_schedule_logic(reg_listing)
+                # -------------------------------------------------------------------------------
+                
                 time.sleep(1)
                 click_image("select_all.png", region=reg_listing)
                 time.sleep(1)
+                
                 if click_image("lets_go.png", retry=2, region=reg_wagony):
-                    logging.info("[FARMING] Pociągi wysłane.")
+                     logging.info("[FARMING] Pociągi wysłane.")
                 elif handle_wagons_logic():
-                    logging.info("[FARMING] Kupiono wagony.")
+                     logging.info("[FARMING] Kupiono wagony.")
                 else:
-                    logging.warning("[FARMING] Brak przycisku startu!")
+                     logging.warning("[FARMING] Nie znaleziono przycisku startu/kupna!")
+                
+                logging.info("[FARMING] Zamykam okno.")
+                click_image("closed.png")
             else:
-                logging.info("[FARMING] Rozkład bez zmian (Keep).")
-            
-            logging.info("[FARMING] Zamykam okno.")
-            close_game_window() # Zmiana
+                logging.warning("Brak ikony Timetable.")
         else:
-            logging.warning("Brak ikony Timetable.")
-            close_game_window() # Zmiana
-    else:
-        logging.warning("Nie znaleziono pociągu 'Career_engine.png'.")
-        close_game_window() # Zmiana
-        
-    time.sleep(4)
+            logging.warning("Brak zakładki Career.")
+            
+        click_image("closed.png") 
+        time.sleep(4)
 
 def run_farming_cycle():
     if CURRENT_FARMING_IMG == "Timetable_calculator.png":
@@ -500,7 +388,8 @@ def run_farming_cycle():
         else:
             logging.warning("Nie znaleziono przycisku 'rozklad_zapisany.png'")
 
-        close_game_window() # Zmiana
+        click_image("closed.png")
+        time.sleep(5)
 
 # --- FUNKCJE KONKURSOWE ---
 
@@ -577,7 +466,8 @@ def find_and_click_city(schedule, visited_cities, silent=False):
         real_start, is_active, _ = get_target_click_time(miasto, schedule, OFFSET)
         if is_active:
             logging.info(f"[MAPA] AKTYWNY: {miasto} (Wchodzę!)")
-            perform_hard_click(item['x'], item['y'])
+            visited_cities[miasto] = time.time()
+            pyautogui.click(item['x'], item['y'])
             time.sleep(8)
             return True, real_start
     return False, None
@@ -598,42 +488,29 @@ def contest_loop():
     schedule = {**load_schedule("miasta - USA.txt"), **load_schedule("miasta - Europa_Afryka.txt")}
     visited_cities = {}
     
-    logging.info("Bot uruchomiony (Wersja: Close Window via CSV for FHD).")
+    logging.info("Bot uruchomiony (Wersja: One-Time Warehouse + Safety).")
 
     initial_farm_done = False
     last_farming_signature = ""
     last_cities_seen_time = time.time()
+
+    # DODAJ TĘ LINIĘ:
+    last_main_afk = time.time()
     
+    # NOWA FLAGA: Czy rozkład magazynowy jest aktywny?
     farming_schedule_active = False
-    calc_immediate_done = False
-    
-    last_wake_time = time.time()
-    last_anti_afk_time = time.time()
 
     while True:
-        if check_exists("RN_disconnect.png"):
-            logging.warning("[SAFETY] Podejrzenie Disconnectu. Weryfikacja 3x30s...")
-            is_real_disconnect = True
-            for verify_step in range(3):
-                time.sleep(30)
-                logging.info(f"[SAFETY] Weryfikacja {verify_step+1}/3...")
-                wake_mouse()
-                if not check_exists("RN_disconnect.png"):
-                    logging.info("[SAFETY] Fałszywy alarm. Błąd zniknął.")
-                    is_real_disconnect = False
-                    break
-            
-            if is_real_disconnect:
-                logging.error("[SAFETY] Potwierdzono Disconnect. Restart!")
-                click_image("RN_disconnect.png", retry=1)
-                try: execute_emergency_reconnect()
-                except Exception as e: logging.error(f"Błąd restartu: {e}")
-                
-                last_cities_seen_time = time.time()
-                farming_schedule_active = False 
-                last_anti_afk_time = time.time()
-                continue
+        # --- KROK 0: ANTI-AFK (CO 5 MINUT) ---
+        if time.time() - last_main_afk > 300:
+            logging.info("[AFK] 5 minut minęło. Wykonuję ruch myszy.")
+            wake_mouse()
+            last_main_afk = time.time()
 
+        # Dalej reszta kodu (find_and_click_city itd.)...
+        # --- KROK 0: SPRAWDZENIE BEZPIECZEŃSTWA (Fragment usunięty) ---
+        
+        # To zostaje! (Linia, którą przypadkiem przekreśliłeś na środku)
         found, contest_start_time = find_and_click_city(schedule, visited_cities, silent=False)
         
         reg_check = load_region(settings.CSV_REGION_MAIN)
@@ -641,16 +518,12 @@ def contest_loop():
         
         if check_cities:
             last_cities_seen_time = time.time()
-        else:
-            if time.time() - last_cities_seen_time > 600:
-                logging.warning("[SAFETY] Brak widocznych miast od 10 minut!")
-                execute_emergency_reconnect()
-                last_cities_seen_time = time.time()
-                farming_schedule_active = False 
-                continue
-
+        
+        # Tutaj usunęliśmy całe "else" i jego zawartość
+            
         if found:
             logging.info("--- OBSŁUGA KONKURSU ---")
+            # ... reszta kodu bez zmian
             initial_farm_done = True 
             
             setup_schedule_and_start()
@@ -661,11 +534,27 @@ def contest_loop():
             if contest_start_time > now:
                 wait_seconds = (contest_start_time - now).total_seconds()
                 logging.info(f"[POCZEKALNIA] Czekam {int(wait_seconds)}s na start...")
+                
+                # Zmienna pomocnicza dla poczekalni
+                last_wait_afk = time.time()
+
                 while datetime.now() < contest_start_time:
+                    now_loop = time.time()
                     left = (contest_start_time - datetime.now()).total_seconds()
+                    
+                    # 1. Warunek: Co 120 sekund
+                    if now_loop - last_wait_afk > 120:
+                        logging.info("[POCZEKALNIA] Anti-AFK (interwał 120s).")
+                        wake_mouse()
+                        last_wait_afk = now_loop
+                    
+                    # 2. Warunek: T-10s (bez zmian)
                     if int(left) == 10: 
                         logging.info("[POCZEKALNIA] T-10s WakeUp.")
                         wake_mouse()
+                        # Mała pauza żeby nie spamować w tej samej sekundzie
+                        time.sleep(1.1) 
+
                     if left > 1: time.sleep(0.2)
                     else: time.sleep(0.05)
                 
@@ -673,14 +562,14 @@ def contest_loop():
                 time.sleep(2)
             else:
                 logging.info("[START] Spóźniony/Recovery. Sprawdzam udział...")
-                logging.info("[BUFFER] Czekam 3s na załadowanie listy...")
-                time.sleep(3)
                 perform_drag_from_listing()
                 time.sleep(1)
                 pre_status = monitor_contest()
                 if pre_status == "won":
                     logging.info("[STATUS] Konkurs już wygrany! Wychodzę.")
-                    close_game_window() # Zmiana
+                    click_image("closed.png")
+                    time.sleep(3)
+                    # Po wyjściu z konkursu - trzeba przywrócić magazyny!
                     farming_schedule_active = False 
                     continue 
                 elif pre_status == "progress":
@@ -697,8 +586,6 @@ def contest_loop():
             logging.info("[MONITORING] Pętla wyniku...")
             start_monitor = time.time()
             last_drag = time.time()
-            last_refresh_time = time.time()
-
             while True:
                 now = datetime.now()
                 if (now - contest_start_time).total_seconds() > (50 * 60):
@@ -709,17 +596,8 @@ def contest_loop():
                      logging.warning(f"[MONITORING] Inny konkurs za {int(sec_next)}s. Uciekam.")
                      break
                 
-                if time.time() - last_refresh_time > 60:
-                    sw, sh = pyautogui.size()
-                    if sw == 3840: rx, ry = 53, 237
-                    else: rx, ry = 27, 127
-                    logging.info("[MONITORING] Odświeżanie listy (Klik w zakładkę).")
-                    perform_hard_click(rx, ry) 
-                    last_refresh_time = time.time()
-                    time.sleep(1)
-                
                 if time.time() - last_drag > 60:
-                    perform_drag_from_listing(distance=-400) 
+                    perform_drag_from_listing()
                     last_drag = time.time()
                 
                 status = monitor_contest()
@@ -728,66 +606,68 @@ def contest_loop():
                     break
                 time.sleep(10)
             
-            close_game_window() # Zmiana
+            click_image("closed.png") 
+            time.sleep(3)
             
-            logging.info("[INFO] Konkurs zakończony. Reset flagi farmingu.")
+            # Po zakończeniu konkursu resetujemy flagę, aby przywrócić Magazyny
+            logging.info("[INFO] Konkurs zakończony. Reset flagi farmingu (powrót do Magazynów).")
             farming_schedule_active = False 
-            
             continue 
 
         # --- BRAK KONKURSU (IDLE) ---
 
-        reg_mapa = load_region(settings.CSV_REGION_MAIN)
-        visible_cities = scan_screen_for_city(reg_mapa, silent=True)
+        reg_mapa = load_region(settings.CSV_REGION_MAIN) #
+        visible_cities = scan_screen_for_city(reg_mapa, silent=True) #
         visible_names = [x['city'] for x in visible_cities] if visible_cities else []
-        sec_to_contest = get_seconds_to_next_visible_contest(schedule, visible_names)
+        sec_to_contest = get_seconds_to_next_visible_contest(schedule, visible_names) #
 
         now = datetime.now()
+        current_signature = now.strftime("%Y-%m-%d %H:%M")
         should_farm = False
         
-        slot_marker = "00" if now.minute <= 15 else "30"
-        current_slot_signature = f"{now.strftime('%Y-%m-%d %H')}:{slot_marker}"
-
+        # --- LOGIKA DECYZYJNA ---
         if CURRENT_FARMING_IMG == "Timetable_calculator.png":
-            if not calc_immediate_done:
-                if sec_to_contest > 180:
-                    logging.info("[KALKULATOR] Uruchamiam natychmiast (Pierwszy Start).")
-                    run_farming_calculator()
-                    calc_immediate_done = True
-                    is_slot_time = (0 <= now.minute <= 5) or (30 <= now.minute <= 35)
-                    if is_slot_time: last_farming_signature = current_slot_signature
-                    initial_farm_done = True
-                    last_anti_idle_time = time.time() 
-                    continue 
-                else:
-                    logging.warning(f"[KALKULATOR] Chcę uruchomić natychmiast, ale konkurs za {int(sec_to_contest)}s. Czekam.")
-
-            is_slot_time = (0 <= now.minute <= 5) or (30 <= now.minute <= 35)
-            
-            if is_slot_time and current_slot_signature != last_farming_signature:
-                if sec_to_contest > 300: 
-                    logging.info(f"[KALKULATOR] Slot czasowy {current_slot_signature}")
-                    run_farming_calculator()
-                    last_farming_signature = current_slot_signature
-                    initial_farm_done = True
-                    last_anti_idle_time = time.time()
-                else:
-                    logging.warning(f"[KALKULATOR] Slot {current_slot_signature} pominięty (Konkurs blisko).")
-                    last_farming_signature = current_slot_signature 
-
+            # Kalkulator startuje gdy:
+            # 1. Jest idealny czas (XX:01 lub XX:31)
+            # 2. LUB gdy jeszcze nie był puszczony w tej przerwie między konkursami (not farming_schedule_active)
+            # 3. LUB gdy to pierwszy start bota (not initial_farm_done)
+            is_slot_time = (now.minute == 1 or now.minute == 31)
+            should_farm = (is_slot_time and current_signature != last_farming_signature) \
+                          or (not farming_schedule_active) \
+                          or (not initial_farm_done)
         else:
-            if not farming_schedule_active and sec_to_contest > 180:
-                logging.info(f"[FARMING] Uruchamiam cykl: {CURRENT_FARMING_IMG}")
-                run_farming_cycle()
+            # Magazyny: Startują jeśli nieaktywne lub pierwszy start
+            should_farm = (not farming_schedule_active) or (not initial_farm_done)
+
+        logging.info(f"[DECYZJA] Farm: {should_farm} | Init: {initial_farm_done} | Active: {farming_schedule_active}")
+
+        if should_farm:
+            # Używamy Twojego ustawienia 600s (lub 900s)
+            required_buffer = 900 if initial_farm_done else 180
+            
+            if sec_to_contest > required_buffer:
+                logging.info(f"[FARMING] Start modułu: {CURRENT_FARMING_IMG}")
+                
+                if CURRENT_FARMING_IMG == "Timetable_calculator.png":
+                    run_farming_calculator()
+                    last_farming_signature = current_signature
+                else:
+                    run_farming_cycle()
+                    logging.info("[FARMING] Rozkład magazynowy ustawiony.")
+
+                # WAŻNE: Ustawiamy flagi PO wykonaniu, aby bot nie zapętlił się
                 farming_schedule_active = True 
                 initial_farm_done = True
-                last_anti_idle_time = time.time()
+                
+            else:
+                logging.warning(f"Farming pominięty (Wymagane {required_buffer}s, do konkursu {int(sec_to_contest)}s).")
 
         buffer_video = 420 
         
+        # Warunek video (taki sam)
         if CURRENT_FARMING_IMG == "Timetable_calculator.png":
-             next_slot_time = get_next_calculator_slot()
-             sec_to_slot = (next_slot_time - datetime.now()).total_seconds()
+             next_slot = get_next_calculator_slot()
+             sec_to_slot = (next_slot - datetime.now()).total_seconds()
              safe_for_video = (sec_to_slot > 180) and (sec_to_contest > buffer_video)
         else:
              safe_for_video = (sec_to_contest > buffer_video)
@@ -795,21 +675,11 @@ def contest_loop():
         if safe_for_video: 
             logging.info(f"[FILLER] Czas wolny (Konkurs za {int(sec_to_contest)}s). Video...")
             video_watcher.watch_cycle()
-            last_anti_idle_time = time.time() 
         else:
-            current_time = time.time()
-            if current_time - last_anti_afk_time > 180:
-                logging.info("[ANTI-AFK] Wykonuję Mikro-Drag (10px) + WakeUp.")
-                perform_drag_from_listing(distance=-10) 
-                wake_mouse() 
-                last_anti_afk_time = current_time
-                last_wake_time = current_time 
-            elif current_time - last_wake_time > 60:
-                logging.info(f"[IDLE] WakeUp. Konkurs za {int(sec_to_contest)}s.")
-                wake_mouse()
-                last_wake_time = current_time
-            else:
-                time.sleep(1)
+            wait_time = 10
+            logging.info(f"Czekam {wait_time}s... (Gotowość)")
+            wake_mouse()
+            time.sleep(wait_time)
 
         now_ts = time.time()
         for k in [c for c, t in visited_cities.items() if now_ts - t > 3600]: del visited_cities[k]

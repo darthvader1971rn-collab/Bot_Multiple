@@ -14,7 +14,7 @@ import settings
 # Konfiguracja Tesseracta
 pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_PATH
 
-CONFIDENCE = 90.0
+CONFIDENCE = 0.80
 
 # --- PAMIĘĆ TYMCZASOWA (BLACKLIST) ---
 BLOCKED_PLAYERS = {}
@@ -43,16 +43,46 @@ def check_exists(image_name, region=None):
         return pyautogui.locateOnScreen(full_path, region=region, confidence=CONFIDENCE, grayscale=True) is not None
     except: return False
 
+# --- NOWA FUNKCJA: DEBUG SCREENSHOT ---
+def save_bonus_debug(region, prefix):
+    try:
+        # Ścieżka: .../resources/img/en/Bonusy
+        save_path = os.path.join(settings.BASE_DIR, "resources", "img", "en", "Bonusy")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+            
+        timestamp = datetime.now().strftime("%H%M%S_%f")[:9] # Godzina + ms
+        filename = f"{prefix}_{timestamp}.png"
+        full_path = os.path.join(save_path, filename)
+        
+        # Robimy zrzut wykrytego regionu (przycisku)
+        pyautogui.screenshot(region=region).save(full_path)
+        logging.info(f"[DEBUG] Zapisano podgląd bonusu: {filename}")
+    except Exception as e:
+        logging.warning(f"[DEBUG] Błąd zapisu screena: {e}")
+
 def find_and_click_simple(image_name, retry=2, wait_after=1):
     full_path = os.path.join(settings.GRAPHICS_PATH, image_name)
     if not os.path.exists(full_path): return False
+    
+    # Sprawdzamy, czy to obrazek, który chcemy debugować (Prestiż/Dolar)
+    is_debug_target = ("prestige" in image_name) or ("dollar" in image_name)
+
     for _ in range(retry):
         try:
-            loc = pyautogui.locateCenterOnScreen(full_path, confidence=CONFIDENCE, grayscale=True)
-            if loc:
+            # Używamy locateOnScreen zamiast Center, żeby mieć wymiary do screenshota
+            box = pyautogui.locateOnScreen(full_path, confidence=CONFIDENCE, grayscale=True)
+            if box:
+                # --- DEBUG SCREENSHOT ---
+                if is_debug_target:
+                    save_bonus_debug((int(box.left), int(box.top), int(box.width), int(box.height)), "Prestige_Simple")
+                    time.sleep(0.5) # Opóźnienie na żądanie
+                # ------------------------
+
+                center_loc = pyautogui.center(box)
                 logging.info(f"[VIDEO] Klikam: {image_name}")
-                pyautogui.moveTo(loc)
-                pyautogui.click(loc)
+                pyautogui.moveTo(center_loc)
+                pyautogui.click(center_loc)
                 time.sleep(wait_after)
                 return True
         except: pass
@@ -99,10 +129,6 @@ def find_and_click_smart_dollar(image_name, region=None):
             
         candidates = list(pyautogui.locateAllOnScreen(full_path, region=region, confidence=CONFIDENCE, grayscale=is_gray))
         
-        # Fallback na cały ekran
-        if not candidates and region is not None:
-             candidates = list(pyautogui.locateAllOnScreen(full_path, confidence=CONFIDENCE, grayscale=is_gray))
-
         if not candidates: return False
         
         candidates.sort(key=lambda b: (b.top, b.left))
@@ -116,9 +142,9 @@ def find_and_click_smart_dollar(image_name, region=None):
             # 1. Odczytaj nick
             player_name = get_player_name((cx, cy), limit_region=region)
             
-            # Jeśli nick pusty, uznajemy go za "Unknown" i klikamy (zamiast pomijać)
+            # Jeśli nick pusty, pomijamy (bezpieczeństwo)
             if not player_name:
-                player_name = "Unknown_Player"
+                continue
 
             # 2. Sprawdź Blacklistę
             if player_name in BLOCKED_PLAYERS:
@@ -130,27 +156,34 @@ def find_and_click_smart_dollar(image_name, region=None):
                     logging.info(f"[SMART] Gracz '{player_name}' zbanowany. Pomijam.")
                     continue 
             
-            # 3. Kliknij
+            # 3. Kliknij + DEBUG
             logging.info(f"[VIDEO] Klikam dolara u gracza: '{player_name}'")
+            
+            # --- DEBUG SCREENSHOT ---
+            save_bonus_debug((int(box.left), int(box.top), int(box.width), int(box.height)), f"Dolar_{player_name}")
+            time.sleep(0.5) # Opóźnienie na żądanie
+            # ------------------------
+
             pyautogui.moveTo(cx, cy)
             pyautogui.click(cx, cy)
             time.sleep(2.5) 
             
-            # 4. Limit Check (Czy wyskoczyło okienko limitu?)
+            # 4. Limit Check
             if check_exists("account_limit.png"):
                 logging.warning(f"[LIMIT] Pełne konto u gracza: {player_name}!")
                 
-                if player_name != "Unknown_Player":
-                    unban_time = datetime.now() + timedelta(hours=2)
-                    BLOCKED_PLAYERS[player_name] = unban_time
-                    logging.info(f"[BLACKLIST] Zbanowano gracza do {unban_time.strftime('%H:%M')}")
+                # Ban na 2h
+                unban_time = datetime.now() + timedelta(hours=2)
+                BLOCKED_PLAYERS[player_name] = unban_time
+                logging.info(f"[BLACKLIST] Zbanowano gracza do {unban_time.strftime('%H:%M')}")
                 
+                # Zamknij okno
                 time.sleep(1)
                 find_and_click_simple("close_account_limit.png", retry=4, wait_after=1)
                 
-                continue # Idź do następnego kandydata
+                continue # Idź do następnego
             
-            return True # Sukces (kliknięto i nie było błędu)
+            return True # Sukces
             
     except Exception:
         pass
@@ -169,63 +202,36 @@ def wait_for_button(target_image, max_seconds=65, check_interval=5):
     logging.warning(f"[VIDEO] Timeout! Nie znaleziono {target_image}.")
     return False
 
-# --- GŁÓWNA PĘTLA CYKLU ---
-
 def watch_cycle():
-    logging.info("[VIDEO] --- START CYKLU (Priorytet: Bonusy -> Wideo) ---")
+    logging.info("[VIDEO] --- START CYKLU ---")
 
     bonus_region = load_region(settings.CSV_REGION_BONUS)
     
-    # FAZA 1: CZYSZCZENIE PLANSZY (PRESTIŻ I DOLARY)
-    # Pętla wykonuje się tak długo, jak długo znajduje jakiekolwiek bonusy do zebrania.
-    # Dopiero gdy nic nie znajdzie, przechodzi do reklam.
+    # 1. Specjalne (Prestiż/Video) - Proste klikanie
+    special_priorities = ["prestige_purple.png", "prestige.png", "video_enabled.png", "video_new.png"]
+    found_entry = False
     
-    start_collection = time.time()
-    while True:
-        # Bezpiecznik czasowy (żeby nie utknął w pętli zbierania na zawsze)
-        if time.time() - start_collection > 120: 
-            logging.warning("[VIDEO] Przekroczono czas zbierania bonusów.")
+    for btn in special_priorities:
+        # find_and_click_simple ma teraz wbudowaną logikę screenshota dla "prestige"
+        if find_and_click_simple(btn, retry=1, wait_after=3):
+            found_entry = True
             break
-
-        collected_something = False
-
-        # 1. Prestiż (Priorytet najwyższy)
-        if find_and_click_simple("prestige_purple.png", retry=1, wait_after=2.5):
-            collected_something = True
-            continue # Restart pętli, szukaj kolejnych
-        
-        if find_and_click_simple("prestige.png", retry=1, wait_after=2.5):
-            collected_something = True
-            continue
-
-        # 2. Dolary (Priorytet średni)
-        if find_and_click_smart_dollar("dollar_purple.png", region=bonus_region):
-            collected_something = True
-            continue
             
-        if find_and_click_smart_dollar("dollar.png", region=bonus_region):
-            collected_something = True
-            continue
-
-        # Jeśli w tym obiegu nic nie znaleziono, przerywamy pętlę zbierania
-        if not collected_something:
-            break
-
-    # FAZA 2: OGLĄDANIE REKLAM
-    # Sprawdzamy, czy w ogóle jest opcja wideo
+    # 2. Dolary (Smart)
+    if not found_entry:
+        dollar_priorities = ["dollar_purple.png", "dollar.png"]
+        for d_btn in dollar_priorities:
+            if find_and_click_smart_dollar(d_btn, region=bonus_region):
+                time.sleep(1)
+                if check_exists("play_icon.png", region=None):
+                    found_entry = True
+                    break
     
-    video_available = False
-    if check_exists("video_enabled.png") or check_exists("video_new.png") or check_exists("play_icon.png"):
-        video_available = True
-    
-    if not video_available:
-        logging.info("[VIDEO] Brak bonusów i brak wideo. Koniec.")
+    if not found_entry and not check_exists("play_icon.png"):
+        logging.info("[VIDEO] Brak dostępnych (niezablokowanych) bonusów.")
         return False
 
-    # Wejście w tryb Playera (jeśli trzeba kliknąć w ikonę biletu/wideo)
-    if not check_exists("play_icon.png"):
-        if find_and_click_simple("video_enabled.png", retry=1, wait_after=2): pass
-        elif find_and_click_simple("video_new.png", retry=1, wait_after=2): pass
+    # --- PLAYER ---
 
     logging.info("[VIDEO] Film 1: Start.")
     if not find_and_click_simple("play_icon.png", retry=5, wait_after=0):
@@ -246,7 +252,7 @@ def watch_cycle():
             logging.warning("[VIDEO] Nie pojawił się Redeem po 2. filmie.")
     
     else:
-        # Fallback (czasem jest tylko 1 film)
+        # Fallback
         if check_exists("redeem.png"):
             logging.info("[VIDEO] Wykryto Redeem (Tylko 1 film?). Odbieram.")
             find_and_click_simple("redeem.png", retry=8, wait_after=2)
@@ -255,7 +261,6 @@ def watch_cycle():
 
     time.sleep(1)
     
-    # Zamykanie okienek po nagrodach
     if check_exists("lottery_png.png"): find_and_click_simple("close_lottery.png", wait_after=1)
     elif check_exists("lottery.png"): find_and_click_simple("close_lottery.png", wait_after=1)
 
