@@ -76,14 +76,21 @@ def find_and_click_simple(image_name, retry=2, wait_after=1):
                 # --- DEBUG SCREENSHOT ---
                 if is_debug_target:
                     save_bonus_debug((int(box.left), int(box.top), int(box.width), int(box.height)), "Prestige_Simple")
-                    time.sleep(0.5) # Opóźnienie na żądanie
+                    time.sleep(0.5) 
                 # ------------------------
 
                 center_loc = pyautogui.center(box)
                 logging.info(f"[VIDEO] Klikam: {image_name}")
                 pyautogui.moveTo(center_loc)
                 pyautogui.click(center_loc)
-                time.sleep(wait_after)
+                
+                # ### ZMIANA: Wymuszona 1 sekunda pauzy po KAŻDYM kliknięciu ###
+                time.sleep(1) 
+                
+                # Dodatkowe oczekiwanie (jeśli zdefiniowano więcej niż 0)
+                if wait_after > 0:
+                    time.sleep(wait_after)
+                    
                 return True
         except: pass
         time.sleep(0.5)
@@ -161,12 +168,17 @@ def find_and_click_smart_dollar(image_name, region=None):
             
             # --- DEBUG SCREENSHOT ---
             save_bonus_debug((int(box.left), int(box.top), int(box.width), int(box.height)), f"Dolar_{player_name}")
-            time.sleep(0.5) # Opóźnienie na żądanie
+            time.sleep(0.5) 
             # ------------------------
 
             pyautogui.moveTo(cx, cy)
             pyautogui.click(cx, cy)
-            time.sleep(2.5) 
+            
+            # ### ZMIANA: Pauza po kliknięciu dolara ###
+            time.sleep(1.0) 
+            
+            # Czas na pojawienie się okna (wcześniej było 2.5, teraz 1.0 + 1.5 = 2.5)
+            time.sleep(1.5) 
             
             # 4. Limit Check
             if check_exists("account_limit.png"):
@@ -212,7 +224,7 @@ def watch_cycle():
     found_entry = False
     
     for btn in special_priorities:
-        # find_and_click_simple ma teraz wbudowaną logikę screenshota dla "prestige"
+        # wait_after w find_and_click_simple teraz dodaje się do sztywnej 1s
         if find_and_click_simple(btn, retry=1, wait_after=3):
             found_entry = True
             break
@@ -234,6 +246,7 @@ def watch_cycle():
     # --- PLAYER ---
 
     logging.info("[VIDEO] Film 1: Start.")
+    # Tutaj wcześniej było wait_after=0. Teraz funkcja sama wymusi 1s pauzy.
     if not find_and_click_simple("play_icon.png", retry=5, wait_after=0):
         logging.warning("[VIDEO] Nie widzę Play. Koniec.")
         return False

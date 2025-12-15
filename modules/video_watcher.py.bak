@@ -1,0 +1,271 @@
+# -*- coding: utf-8 -*-
+import pyautogui
+import time
+import random
+import os
+import logging
+import csv
+import math
+import pytesseract
+from PIL import Image, ImageOps
+from datetime import datetime, timedelta
+import settings
+
+# Konfiguracja Tesseracta
+pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_PATH
+
+CONFIDENCE = 0.80
+
+# --- PAMIĘĆ TYMCZASOWA (BLACKLIST) ---
+BLOCKED_PLAYERS = {}
+
+def random_time(start, end):
+    return random.uniform(start, end)
+
+def park_mouse_left_edge():
+    screen_w, screen_h = pyautogui.size()
+    target_y = screen_h // 2
+    pyautogui.moveTo(5, target_y, duration=0.5)
+
+def load_region(path):
+    if not os.path.exists(path): return None
+    try:
+        with open(path, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f, delimiter=";")
+            row = next(reader)
+            return (int(row["LewyGorny_X"]), int(row["LewyGorny_Y"]), int(row["Szerokosc"]), int(row["Wysokosc"]))
+    except: return None
+
+def check_exists(image_name, region=None):
+    full_path = os.path.join(settings.GRAPHICS_PATH, image_name)
+    if not os.path.exists(full_path): return False
+    try:
+        return pyautogui.locateOnScreen(full_path, region=region, confidence=CONFIDENCE, grayscale=True) is not None
+    except: return False
+
+# --- NOWA FUNKCJA: DEBUG SCREENSHOT ---
+def save_bonus_debug(region, prefix):
+    try:
+        # Ścieżka: .../resources/img/en/Bonusy
+        save_path = os.path.join(settings.BASE_DIR, "resources", "img", "en", "Bonusy")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+            
+        timestamp = datetime.now().strftime("%H%M%S_%f")[:9] # Godzina + ms
+        filename = f"{prefix}_{timestamp}.png"
+        full_path = os.path.join(save_path, filename)
+        
+        # Robimy zrzut wykrytego regionu (przycisku)
+        pyautogui.screenshot(region=region).save(full_path)
+        logging.info(f"[DEBUG] Zapisano podgląd bonusu: {filename}")
+    except Exception as e:
+        logging.warning(f"[DEBUG] Błąd zapisu screena: {e}")
+
+def find_and_click_simple(image_name, retry=2, wait_after=1):
+    full_path = os.path.join(settings.GRAPHICS_PATH, image_name)
+    if not os.path.exists(full_path): return False
+    
+    # Sprawdzamy, czy to obrazek, który chcemy debugować (Prestiż/Dolar)
+    is_debug_target = ("prestige" in image_name) or ("dollar" in image_name)
+
+    for _ in range(retry):
+        try:
+            # Używamy locateOnScreen zamiast Center, żeby mieć wymiary do screenshota
+            box = pyautogui.locateOnScreen(full_path, confidence=CONFIDENCE, grayscale=True)
+            if box:
+                # --- DEBUG SCREENSHOT ---
+                if is_debug_target:
+                    save_bonus_debug((int(box.left), int(box.top), int(box.width), int(box.height)), "Prestige_Simple")
+                    time.sleep(0.5) # Opóźnienie na żądanie
+                # ------------------------
+
+                center_loc = pyautogui.center(box)
+                logging.info(f"[VIDEO] Klikam: {image_name}")
+                pyautogui.moveTo(center_loc)
+                pyautogui.click(center_loc)
+                time.sleep(wait_after)
+                return True
+        except: pass
+        time.sleep(0.5)
+    return False
+
+# --- SMART LOGIC ---
+
+def get_player_name(button_center, limit_region=None):
+    bx, by = button_center
+    
+    # Dynamiczne wymiary z settings
+    off_x = getattr(settings, 'OCR_OFFSET_X', 185)
+    off_y = getattr(settings, 'OCR_OFFSET_Y', 85)
+    width = getattr(settings, 'OCR_WIDTH', 355)
+    height = getattr(settings, 'OCR_HEIGHT', 55)
+    
+    region_x = int(bx - off_x)
+    region_y = int(by - off_y)
+    
+    # Clamping
+    if limit_region:
+        limit_x, limit_y, limit_w, limit_h = limit_region
+        if region_x < limit_x: region_x = limit_x
+
+    try:
+        screenshot = pyautogui.screenshot(region=(region_x, region_y, width, height))
+        gray = ImageOps.grayscale(screenshot)
+        bw = gray.point(lambda p: 255 if p > 180 else 0)
+        text = pytesseract.image_to_string(bw, config="--psm 7").strip()
+        clean_name = "".join(e for e in text if e.isalnum())
+        return clean_name
+    except Exception:
+        return ""
+
+def find_and_click_smart_dollar(image_name, region=None):
+    full_path = os.path.join(settings.GRAPHICS_PATH, image_name)
+    if not os.path.exists(full_path): return False
+
+    try:
+        # Grayscale=False dla fioletowych dolarów
+        is_gray = True
+        if "purple" in image_name: is_gray = False
+            
+        candidates = list(pyautogui.locateAllOnScreen(full_path, region=region, confidence=CONFIDENCE, grayscale=is_gray))
+        
+        if not candidates: return False
+        
+        candidates.sort(key=lambda b: (b.top, b.left))
+
+        logging.info(f"[SMART] Widzę {len(candidates)} dolarów '{image_name}'.")
+
+        for box in candidates:
+            cx = box.left + box.width // 2
+            cy = box.top + box.height // 2
+            
+            # 1. Odczytaj nick
+            player_name = get_player_name((cx, cy), limit_region=region)
+            
+            # Jeśli nick pusty, pomijamy (bezpieczeństwo)
+            if not player_name:
+                continue
+
+            # 2. Sprawdź Blacklistę
+            if player_name in BLOCKED_PLAYERS:
+                unban_time = BLOCKED_PLAYERS[player_name]
+                if datetime.now() > unban_time:
+                    logging.info(f"[SMART] Ban dla '{player_name}' wygasł.")
+                    del BLOCKED_PLAYERS[player_name]
+                else:
+                    logging.info(f"[SMART] Gracz '{player_name}' zbanowany. Pomijam.")
+                    continue 
+            
+            # 3. Kliknij + DEBUG
+            logging.info(f"[VIDEO] Klikam dolara u gracza: '{player_name}'")
+            
+            # --- DEBUG SCREENSHOT ---
+            save_bonus_debug((int(box.left), int(box.top), int(box.width), int(box.height)), f"Dolar_{player_name}")
+            time.sleep(0.5) # Opóźnienie na żądanie
+            # ------------------------
+
+            pyautogui.moveTo(cx, cy)
+            pyautogui.click(cx, cy)
+            time.sleep(2.5) 
+            
+            # 4. Limit Check
+            if check_exists("account_limit.png"):
+                logging.warning(f"[LIMIT] Pełne konto u gracza: {player_name}!")
+                
+                # Ban na 2h
+                unban_time = datetime.now() + timedelta(hours=2)
+                BLOCKED_PLAYERS[player_name] = unban_time
+                logging.info(f"[BLACKLIST] Zbanowano gracza do {unban_time.strftime('%H:%M')}")
+                
+                # Zamknij okno
+                time.sleep(1)
+                find_and_click_simple("close_account_limit.png", retry=4, wait_after=1)
+                
+                continue # Idź do następnego
+            
+            return True # Sukces
+            
+    except Exception:
+        pass
+        
+    return False
+
+def wait_for_button(target_image, max_seconds=65, check_interval=5):
+    logging.info(f"[VIDEO] Czekam na {target_image} (Max {max_seconds}s)...")
+    park_mouse_left_edge()
+    start_time = time.time()
+    while time.time() - start_time < max_seconds:
+        if check_exists(target_image, region=None):
+            logging.info(f"[VIDEO] Wykryto: {target_image}!")
+            return True
+        time.sleep(check_interval)
+    logging.warning(f"[VIDEO] Timeout! Nie znaleziono {target_image}.")
+    return False
+
+def watch_cycle():
+    logging.info("[VIDEO] --- START CYKLU ---")
+
+    bonus_region = load_region(settings.CSV_REGION_BONUS)
+    
+    # 1. Specjalne (Prestiż/Video) - Proste klikanie
+    special_priorities = ["prestige_purple.png", "prestige.png", "video_enabled.png", "video_new.png"]
+    found_entry = False
+    
+    for btn in special_priorities:
+        # find_and_click_simple ma teraz wbudowaną logikę screenshota dla "prestige"
+        if find_and_click_simple(btn, retry=1, wait_after=3):
+            found_entry = True
+            break
+            
+    # 2. Dolary (Smart)
+    if not found_entry:
+        dollar_priorities = ["dollar_purple.png", "dollar.png"]
+        for d_btn in dollar_priorities:
+            if find_and_click_smart_dollar(d_btn, region=bonus_region):
+                time.sleep(1)
+                if check_exists("play_icon.png", region=None):
+                    found_entry = True
+                    break
+    
+    if not found_entry and not check_exists("play_icon.png"):
+        logging.info("[VIDEO] Brak dostępnych (niezablokowanych) bonusów.")
+        return False
+
+    # --- PLAYER ---
+
+    logging.info("[VIDEO] Film 1: Start.")
+    if not find_and_click_simple("play_icon.png", retry=5, wait_after=0):
+        logging.warning("[VIDEO] Nie widzę Play. Koniec.")
+        return False
+
+    if wait_for_button("watch_video.png", max_seconds=70):
+        find_and_click_simple("watch_video.png", wait_after=2)
+        
+        logging.info("[VIDEO] Film 2: Start.")
+        if not find_and_click_simple("play_icon.png", retry=5, wait_after=0):
+             logging.warning("[VIDEO] Nie widzę Play (Film 2).")
+
+        if wait_for_button("redeem.png", max_seconds=70):
+            logging.info("[VIDEO] Odbieram nagrodę...")
+            find_and_click_simple("redeem.png", retry=8, wait_after=2)
+        else:
+            logging.warning("[VIDEO] Nie pojawił się Redeem po 2. filmie.")
+    
+    else:
+        # Fallback
+        if check_exists("redeem.png"):
+            logging.info("[VIDEO] Wykryto Redeem (Tylko 1 film?). Odbieram.")
+            find_and_click_simple("redeem.png", retry=8, wait_after=2)
+        else:
+            logging.warning("[VIDEO] Cykl nieudany.")
+
+    time.sleep(1)
+    
+    if check_exists("lottery_png.png"): find_and_click_simple("close_lottery.png", wait_after=1)
+    elif check_exists("lottery.png"): find_and_click_simple("close_lottery.png", wait_after=1)
+
+    if check_exists("pollux.png"): find_and_click_simple("close_pollux.png")
+    elif check_exists("no_gold_bonus.png"): find_and_click_simple("no_gold_bonus.png")
+    
+    logging.info("[VIDEO] Koniec cyklu.")
+    return True

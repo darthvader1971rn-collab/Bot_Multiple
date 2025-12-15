@@ -73,6 +73,8 @@ def click_image(image_name, retry=3, region=None):
             if location:
                 pyautogui.click(location)
                 logging.info(f"Kliknięto: {image_name}")
+                
+                # ### PAUZA 1s JEST JUŻ TUTAJ ###
                 time.sleep(1)
                 return True
             time.sleep(0.5)
@@ -84,6 +86,8 @@ def click_from_csv_center(csv_path, description):
     if region == (0,0,0,0): return False
     pyautogui.click(region[0] + region[2] // 2, region[1] + region[3] // 2)
     logging.info(f"Kliknięcie (Fallback/CSV) w {description}")
+    
+    # ### PAUZA 1s ###
     time.sleep(1)
     return True
 
@@ -179,11 +183,16 @@ def execute_emergency_reconnect():
                     pyautogui.click(x, y)
                     logging.info(f"[RESTART] Kliknieto tekst: {text}")
                     clicked = True
+                    
+                    # ### ZMIANA: PAUZA 1s ###
+                    time.sleep(1)
                     break
             
             if not clicked:
                 logging.warning("[RESTART] Nie znaleziono tekstu serwera. Klikam na oślep (Play Position).")
                 pyautogui.click(s_width // 2, int(s_height * 0.6))
+                # ### ZMIANA: PAUZA 1s ###
+                time.sleep(1)
                 
         except Exception as e:
             logging.error(f"[RESTART] Blad OCR: {e}")
@@ -308,14 +317,46 @@ def setup_schedule_and_start():
     reg_listing = load_region(settings.CSV_REGION_LISTING)
     reg_wagony = load_region(settings.CSV_REGION_WAGONY)
     
+    # Ładowanie regionu checkboxów (zakładamy, że plik jest w folderze głównym)
+    csv_checkbox_path = os.path.join(settings.BASE_DIR, "prostokat_checkbox.csv")
+    reg_checks = load_region(csv_checkbox_path)
+
     logging.info("[SETUP] Otwieram Asystenta...")
     if click_image("schedule_assistant.png", region=reg_listing):
         time.sleep(1.5)
         changed = smart_schedule_logic(reg_listing)
         if not changed:
             logging.info("[SETUP] Rozkład bez zmian.")
-        click_image("select_all.png", region=reg_listing)
-        time.sleep(1)
+        
+        # --- NOWA SEKWENCJA: Select All + Weryfikacja Regionu ---
+        logging.info("[SETUP] Rozpoczynam procedurę zaznaczania (Select All)...")
+        
+        select_success = False
+        for attempt in range(3):
+            logging.info(f"[SETUP] Próba {attempt+1}: Klikam Select All.")
+            time.sleep(1)  # 1. Pauza PRZED kliknięciem
+            
+            if click_image("select_all.png", region=reg_listing):
+                # (Tu jest automatyczna pauza 1s z funkcji click_image)
+                
+                logging.info("[SETUP] Weryfikacja checkboxów (1.5s)...")
+                time.sleep(1.5) # 2. Czas na odświeżenie GUI
+                
+                # Sprawdzamy czy w regionie checkboxów widnieje jakiś "pusty" (niezaznaczony)
+                # Wymaga pliku: unchecked_checkbox.png
+                if reg_checks != (0,0,0,0) and get_image_coords("unchecked_checkbox.png", region=reg_checks):
+                    logging.warning("[SETUP] Wykryto niezaznaczone pole! Ponawiam kliknięcie.")
+                else:
+                    logging.info("[SETUP] Weryfikacja OK (Wszystkie zaznaczone).")
+                    select_success = True
+                    break
+            else:
+                logging.warning("[SETUP] Nie widzę przycisku Select All!")
+        
+        if not select_success:
+            logging.warning("[SETUP] Ostrzeżenie: Nie udało się potwierdzić zaznaczenia wszystkich pól po 3 próbach.")
+        # --------------------------------------------------------
+
         logging.info("[SETUP] Start maszyn...")
         if click_image("lets_go.png", retry=2, region=reg_wagony):
             logging.info("[SETUP] Pociągi wysłane (Let's Go).")
@@ -330,6 +371,10 @@ def run_farming_calculator():
     logging.info("--- URUCHAMIAM KALKULATOR ---")
     reg_pociagi = load_region(settings.CSV_REGION_POCIAGI)
     
+    # Ładowanie regionu checkboxów
+    csv_checkbox_path = os.path.join(settings.BASE_DIR, "prostokat_checkbox.csv")
+    reg_checks = load_region(csv_checkbox_path)
+    
     if click_image("lista_pociagow.png", retry=3, region=reg_pociagi):
         time.sleep(1)
         perform_drag_from_listing()
@@ -341,16 +386,37 @@ def run_farming_calculator():
         if click_image("Career_engine.png", retry=3, region=reg_listing):
             time.sleep(1)
             if click_image("Timetable_calculator.png", retry=3, region=reg_listing):
-                time.sleep(2) # Dajemy chwilę na załadowanie wyników kalkulacji
+                time.sleep(2) 
                 
-                # --- ZMIANA: Zamiast ślepego klikania Adopt, używamy Smart Logic + Screenshot ---
-                # To wywoła funkcję, która robi zdjęcie i decyduje Keep vs Adopt
                 smart_schedule_logic(reg_listing)
-                # -------------------------------------------------------------------------------
                 
-                time.sleep(1)
-                click_image("select_all.png", region=reg_listing)
-                time.sleep(1)
+                # --- NOWA SEKWENCJA: Select All + Weryfikacja Regionu ---
+                logging.info("[FARMING] Rozpoczynam procedurę zaznaczania (Select All)...")
+                
+                select_success = False
+                for attempt in range(3):
+                    logging.info(f"[FARMING] Próba {attempt+1}: Klikam Select All.")
+                    time.sleep(1) # 1. Pauza PRZED kliknięciem
+
+                    if click_image("select_all.png", region=reg_listing):
+                        # (Tu jest automatyczna pauza 1s z funkcji click_image)
+                        
+                        logging.info("[FARMING] Weryfikacja checkboxów (1.5s)...")
+                        time.sleep(1.5) # 2. Czas na odświeżenie GUI
+                        
+                        # Sprawdzamy czy jest jakiś "pusty" checkbox
+                        if reg_checks != (0,0,0,0) and get_image_coords("unchecked_checkbox.png", region=reg_checks):
+                            logging.warning("[FARMING] Wykryto niezaznaczone pole! Ponawiam kliknięcie.")
+                        else:
+                            logging.info("[FARMING] Weryfikacja OK (Wszystkie zaznaczone).")
+                            select_success = True
+                            break
+                    else:
+                         logging.warning("[FARMING] Nie widzę przycisku Select All!")
+                
+                if not select_success:
+                    logging.warning("[FARMING] Ostrzeżenie: Nie udało się potwierdzić zaznaczenia po 3 próbach.")
+                # --------------------------------------------------------
                 
                 if click_image("lets_go.png", retry=2, region=reg_wagony):
                      logging.info("[FARMING] Pociągi wysłane.")
@@ -484,75 +550,74 @@ def try_click_signup_cascade(reg_listing, reg_wagony):
 
 # --- GŁÓWNA PĘTLA ---
 
+# [WSTAW TO W PLIKU sequence.py W MIEJSCE STAREJ FUNKCJI contest_loop]
+
 def contest_loop():
     schedule = {**load_schedule("miasta - USA.txt"), **load_schedule("miasta - Europa_Afryka.txt")}
     visited_cities = {}
     
-    logging.info("Bot uruchomiony (Wersja: One-Time Warehouse + Safety).")
+    logging.info("Bot uruchomiony (Wersja: One-Time Warehouse + Safety + Sunday Event).")
 
     initial_farm_done = False
     last_farming_signature = ""
-    last_cities_seen_time = time.time()
-
-    # DODAJ TĘ LINIĘ:
+    # last_cities_seen_time = time.time() # To zmienna nieużywana w nowej logice, można pominąć
     last_main_afk = time.time()
     
-    # NOWA FLAGA: Czy rozkład magazynowy jest aktywny?
     farming_schedule_active = False
 
     while True:
+        now = datetime.now()
+
         # --- KROK 0: ANTI-AFK (CO 5 MINUT) ---
         if time.time() - last_main_afk > 300:
             logging.info("[AFK] 5 minut minęło. Wykonuję ruch myszy.")
             wake_mouse()
             last_main_afk = time.time()
 
-        # Dalej reszta kodu (find_and_click_city itd.)...
-        # --- KROK 0: SPRAWDZENIE BEZPIECZEŃSTWA (Fragment usunięty) ---
-        
-        # To zostaje! (Linia, którą przypadkiem przekreśliłeś na środku)
-        found, contest_start_time = find_and_click_city(schedule, visited_cities, silent=False)
-        
-        reg_check = load_region(settings.CSV_REGION_MAIN)
-        check_cities = scan_screen_for_city(reg_check, silent=True)
-        
-        if check_cities:
-            last_cities_seen_time = time.time()
-        
-        # Tutaj usunęliśmy całe "else" i jego zawartość
+        # ### ZMIANA 1: DETEKCJA KONKURSU MIEJSKIEGO (NIEDZIELA 13-19) ###
+        # weekday(): 0=Pon, 6=Niedz
+        is_sunday_event = (now.weekday() == 6 and 13 <= now.hour < 19)
+
+        found = False
+        contest_start_time = None
+
+        if not is_sunday_event:
+            # Normalny tryb - szukamy miast
+            found, contest_start_time = find_and_click_city(schedule, visited_cities, silent=False)
+        else:
+            # Tryb Niedzielny - tylko logujemy informację (żeby nie spamować, np. raz na minutę)
+            if now.second < 5 and now.minute % 5 == 0:
+                logging.info("[NIEDZIELA] Trwa Konkurs Miejski (13:00-19:00). Skanowanie miast wyłączone.")
+            found = False
+
+        # -----------------------------------------------------------
             
         if found:
             logging.info("--- OBSŁUGA KONKURSU ---")
-            # ... reszta kodu bez zmian
-            initial_farm_done = True 
             
+            initial_farm_done = True 
             setup_schedule_and_start()
             
-            now = datetime.now()
             should_signup = True
             
             if contest_start_time > now:
                 wait_seconds = (contest_start_time - now).total_seconds()
                 logging.info(f"[POCZEKALNIA] Czekam {int(wait_seconds)}s na start...")
                 
-                # Zmienna pomocnicza dla poczekalni
                 last_wait_afk = time.time()
 
                 while datetime.now() < contest_start_time:
                     now_loop = time.time()
                     left = (contest_start_time - datetime.now()).total_seconds()
                     
-                    # 1. Warunek: Co 120 sekund
                     if now_loop - last_wait_afk > 120:
                         logging.info("[POCZEKALNIA] Anti-AFK (interwał 120s).")
                         wake_mouse()
                         last_wait_afk = now_loop
                     
-                    # 2. Warunek: T-10s (bez zmian)
                     if int(left) == 10: 
                         logging.info("[POCZEKALNIA] T-10s WakeUp.")
                         wake_mouse()
-                        # Mała pauza żeby nie spamować w tej samej sekundzie
                         time.sleep(1.1) 
 
                     if left > 1: time.sleep(0.2)
@@ -569,7 +634,6 @@ def contest_loop():
                     logging.info("[STATUS] Konkurs już wygrany! Wychodzę.")
                     click_image("closed.png")
                     time.sleep(3)
-                    # Po wyjściu z konkursu - trzeba przywrócić magazyny!
                     farming_schedule_active = False 
                     continue 
                 elif pre_status == "progress":
@@ -584,11 +648,10 @@ def contest_loop():
                 time.sleep(30)
             
             logging.info("[MONITORING] Pętla wyniku...")
-            start_monitor = time.time()
             last_drag = time.time()
             while True:
-                now = datetime.now()
-                if (now - contest_start_time).total_seconds() > (50 * 60):
+                now_mon = datetime.now()
+                if (now_mon - contest_start_time).total_seconds() > (50 * 60):
                     logging.warning("[MONITORING] Timeout 50 min.")
                     break
                 sec_next = get_seconds_to_next_visible_contest(schedule, list(schedule.keys()))
@@ -609,17 +672,26 @@ def contest_loop():
             click_image("closed.png") 
             time.sleep(3)
             
-            # Po zakończeniu konkursu resetujemy flagę, aby przywrócić Magazyny
             logging.info("[INFO] Konkurs zakończony. Reset flagi farmingu (powrót do Magazynów).")
             farming_schedule_active = False 
             continue 
 
         # --- BRAK KONKURSU (IDLE) ---
 
-        reg_mapa = load_region(settings.CSV_REGION_MAIN) #
-        visible_cities = scan_screen_for_city(reg_mapa, silent=True) #
-        visible_names = [x['city'] for x in visible_cities] if visible_cities else []
-        sec_to_contest = get_seconds_to_next_visible_contest(schedule, visible_names) #
+        sec_to_contest = 0
+        visible_names = []
+
+        # ### ZMIANA 2: WYŁĄCZENIE SKANOWANIA IDLE W NIEDZIELE ###
+        if not is_sunday_event:
+            reg_mapa = load_region(settings.CSV_REGION_MAIN)
+            visible_cities = scan_screen_for_city(reg_mapa, silent=True)
+            visible_names = [x['city'] for x in visible_cities] if visible_cities else []
+            sec_to_contest = get_seconds_to_next_visible_contest(schedule, visible_names)
+        else:
+            # Jeśli jest event niedzielny, udajemy że do konkursu jest bardzo dużo czasu
+            # Dzięki temu bot skupi się na Farmingu i Reklamach
+            sec_to_contest = 9999 
+        # --------------------------------------------------------
 
         now = datetime.now()
         current_signature = now.strftime("%Y-%m-%d %H:%M")
@@ -627,24 +699,19 @@ def contest_loop():
         
         # --- LOGIKA DECYZYJNA ---
         if CURRENT_FARMING_IMG == "Timetable_calculator.png":
-            # Kalkulator startuje gdy:
-            # 1. Jest idealny czas (XX:01 lub XX:31)
-            # 2. LUB gdy jeszcze nie był puszczony w tej przerwie między konkursami (not farming_schedule_active)
-            # 3. LUB gdy to pierwszy start bota (not initial_farm_done)
             is_slot_time = (now.minute == 1 or now.minute == 31)
             should_farm = (is_slot_time and current_signature != last_farming_signature) \
                           or (not farming_schedule_active) \
                           or (not initial_farm_done)
         else:
-            # Magazyny: Startują jeśli nieaktywne lub pierwszy start
             should_farm = (not farming_schedule_active) or (not initial_farm_done)
 
         logging.info(f"[DECYZJA] Farm: {should_farm} | Init: {initial_farm_done} | Active: {farming_schedule_active}")
 
         if should_farm:
-            # Używamy Twojego ustawienia 600s (lub 900s)
             required_buffer = 900 if initial_farm_done else 180
             
+            # W niedzielę sec_to_contest = 9999, więc ten warunek zawsze przejdzie (o ile nie koliduje z logicznym czasem farmingu)
             if sec_to_contest > required_buffer:
                 logging.info(f"[FARMING] Start modułu: {CURRENT_FARMING_IMG}")
                 
@@ -655,7 +722,6 @@ def contest_loop():
                     run_farming_cycle()
                     logging.info("[FARMING] Rozkład magazynowy ustawiony.")
 
-                # WAŻNE: Ustawiamy flagi PO wykonaniu, aby bot nie zapętlił się
                 farming_schedule_active = True 
                 initial_farm_done = True
                 
@@ -664,7 +730,6 @@ def contest_loop():
 
         buffer_video = 420 
         
-        # Warunek video (taki sam)
         if CURRENT_FARMING_IMG == "Timetable_calculator.png":
              next_slot = get_next_calculator_slot()
              sec_to_slot = (next_slot - datetime.now()).total_seconds()
