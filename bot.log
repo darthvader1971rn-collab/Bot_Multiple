@@ -1,0 +1,124 @@
+2026-08-23 21:54:42,878 [INFO] [CONFIG] Ustawiono grafikę farmingu na: farm_miasta.png
+2026-08-23 21:54:42,916 [INFO] Bot uruchomiony (Wersja: One-Time Warehouse + Safety + Sunday Event).
+2026-08-23 21:54:43,520 [INFO] [MAPA] 'Jacksonville' -> 'Jacksonville'
+2026-08-23 21:54:43,521 [INFO] [MAPA] 'Montgomery' -> 'Montgomery'
+2026-08-23 21:54:43,522 [INFO] [MAPA] 'Augusta' -> 'Augusta'
+2026-08-23 21:54:43,961 [INFO] [DECYZJA] Farm: True | Init: False | Active: False
+2026-08-23 21:54:43,961 [INFO] [FARMING] Start modułu: farm_miasta.png
+2026-08-23 21:54:43,961 [INFO] --- URUCHAMIAM FARMING: farm_miasta.png ---
+2026-08-23 21:54:44,298 [INFO] Kliknięto: lista_pociagow.png
+2026-08-23 21:54:46,651 [INFO] Kliknięto: rozklad_zapisany.png
+2026-08-23 21:54:48,990 [INFO] Kliknięto: rozwiniecie_listy.png
+2026-08-23 21:54:51,321 [INFO] Kliknięto: wczytanie_listy.png
+2026-08-23 21:54:52,978 [INFO] Kliknięto: closed.png
+2026-08-23 21:54:58,979 [INFO] [FARMING] Rozkład magazynowy ustawiony.
+2026-08-23 21:54:58,979 [INFO] [FILLER] Czas wolny (Konkurs za 6616s). Video...
+2026-08-23 21:54:58,979 [INFO] [VIDEO] --- START CYKLU ---
+2026-08-23 21:55:01,433 [INFO] [VIDEO] Klikam: video_enabled.png
+2026-08-23 21:55:05,678 [INFO] [VIDEO] Film 1: Start.
+2026-08-23 21:55:10,758 [WARNING] [VIDEO] Nie widzę Play. Koniec.
+2026-08-23 21:55:11,389 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 21:55:11,390 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 21:55:22,618 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 21:55:22,618 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 21:55:33,872 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 21:55:33,872 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 21:55:44,872 [INFO] [MAPA] 'Jacksonville' -> 'Jacksonville'
+2026-08-23 21:55:44,873 [INFO] [MAPA] 'Montgomery' -> 'Montgomery'
+2026-08-23 21:55:44,873 [INFO] [MAPA] 'Augusta' -> 'Augusta'
+2026-08-23 21:55:45,393 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 21:55:45,393 [INFO] [FILLER] Czas wolny (Konkurs za 6554s). Video...
+2026-08-23 21:55:45,393 [INFO] [VIDEO] --- START CYKLU ---
+2026-08-23 21:55:47,795 [INFO] [VIDEO] Klikam: video_enabled.png
+2026-08-23 21:55:52,014 [INFO] [VIDEO] Film 1: Start.
+2026-08-23 21:55:56,926 [WARNING] [VIDEO] Nie widzę Play. Koniec.
+2026-08-23 21:55:57,534 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 21:55:57,534 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 22:04:28,930 [INFO] [CONFIG] Ustawiono grafikę farmingu na: farm_miasta.png
+2026-08-23 22:04:28,987 [INFO] Bot uruchomiony (Wersja: One-Time Warehouse + Safety + Sunday Event).
+2026-08-23 22:04:29,483 [INFO] [MAPA] 'Montgomery' -> 'Montgomery'
+2026-08-23 22:04:29,484 [INFO] [MAPA] 'Augusta' -> 'Augusta'
+2026-08-23 22:04:29,485 [INFO] [MAPA] 'Jacksonville' -> 'Jacksonville'
+2026-08-23 22:04:29,932 [INFO] [DECYZJA] Farm: True | Init: False | Active: False
+2026-08-23 22:04:29,932 [INFO] [FARMING] Start modułu: farm_miasta.png
+2026-08-23 22:04:29,933 [INFO] --- URUCHAMIAM FARMING: farm_miasta.png ---
+2026-08-23 22:04:30,270 [INFO] Kliknięto: lista_pociagow.png
+2026-08-23 22:04:32,671 [INFO] Kliknięto: rozklad_zapisany.png
+2026-08-23 22:04:35,010 [INFO] Kliknięto: rozwiniecie_listy.png
+2026-08-23 22:04:37,337 [INFO] Kliknięto: wczytanie_listy.png
+2026-08-23 22:04:38,891 [INFO] Kliknięto: closed.png
+2026-08-23 22:04:44,891 [INFO] [FARMING] Rozkład magazynowy ustawiony.
+2026-08-23 22:04:44,891 [INFO] [FILLER] Czas wolny (Konkurs za 6030s). Video...
+2026-08-23 22:04:44,892 [INFO] [VIDEO] --- START CYKLU ---
+2026-08-23 22:04:47,348 [INFO] [VIDEO] Klikam: video_enabled.png
+2026-08-23 22:04:51,553 [INFO] [VIDEO] Film 1: Start.
+2026-08-23 22:04:56,580 [WARNING] [VIDEO] Nie widzę Play. Koniec.
+2026-08-23 22:04:57,221 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:04:57,221 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 22:31:45,765 [INFO] [CONFIG] Ustawiono grafikę farmingu na: farm_miasta.png
+2026-08-23 22:31:45,787 [INFO] Bot uruchomiony (Wersja: One-Time Warehouse + Safety + Sunday Event).
+2026-08-23 22:31:46,423 [INFO] [MAPA] 'Montgomery' -> 'Montgomery'
+2026-08-23 22:31:46,424 [INFO] [MAPA] 'Augusta' -> 'Augusta'
+2026-08-23 22:31:46,425 [INFO] [MAPA] 'Jacksonville' -> 'Jacksonville'
+2026-08-23 22:31:46,877 [INFO] [DECYZJA] Farm: True | Init: False | Active: False
+2026-08-23 22:31:46,877 [INFO] [FARMING] Start modułu: farm_miasta.png
+2026-08-23 22:31:46,877 [INFO] --- URUCHAMIAM FARMING: farm_miasta.png ---
+2026-08-23 22:31:47,503 [INFO] [FARMING] Rozkład magazynowy ustawiony.
+2026-08-23 22:31:47,503 [INFO] [FILLER] Czas wolny (Konkurs za 4393s). Video...
+2026-08-23 22:31:47,503 [INFO] [VIDEO] --- START CYKLU ---
+2026-08-23 22:31:48,072 [INFO] [DEBUG] Zapisano podgląd bonusu: Prestige_Simple_223147_97.png
+2026-08-23 22:31:48,574 [INFO] [VIDEO] Klikam: prestige_purple.png
+2026-08-23 22:31:52,802 [INFO] [VIDEO] Film 1: Start.
+2026-08-23 22:31:57,741 [WARNING] [VIDEO] Nie widzę Play. Koniec.
+2026-08-23 22:31:58,182 [INFO] [MAPA] 'Montgomery' -> 'Montgomery'
+2026-08-23 22:31:58,184 [INFO] [MAPA] 'Augusta' -> 'Augusta'
+2026-08-23 22:31:58,186 [INFO] [MAPA] 'Jacksonville' -> 'Jacksonville'
+2026-08-23 22:31:58,638 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:31:58,638 [INFO] [FILLER] Czas wolny (Konkurs za 4381s). Video...
+2026-08-23 22:31:58,639 [INFO] [VIDEO] --- START CYKLU ---
+2026-08-23 22:32:01,281 [INFO] [VIDEO] Klikam: video_enabled.png
+2026-08-23 22:32:05,493 [INFO] [VIDEO] Film 1: Start.
+2026-08-23 22:32:10,439 [WARNING] [VIDEO] Nie widzę Play. Koniec.
+2026-08-23 22:32:11,050 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:32:11,052 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 22:32:22,221 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:32:22,221 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 22:32:33,418 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:32:33,418 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 22:32:44,593 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:32:44,594 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 22:32:55,740 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:32:55,740 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 22:33:06,910 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:33:06,910 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 22:33:18,095 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:33:18,095 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 22:33:29,292 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:33:29,293 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 22:33:40,440 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:33:40,441 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 22:33:51,592 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:33:51,592 [INFO] Czekam 10s... (Gotowość)
+2026-08-23 22:34:02,832 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-23 22:34:02,832 [INFO] Czekam 10s... (Gotowość)
+2026-08-24 06:39:16,652 [INFO] [CONFIG] Ustawiono grafikę farmingu na: farm_miasta.png
+2026-08-24 06:39:16,714 [INFO] Bot uruchomiony (Wersja: One-Time Warehouse + Safety + Sunday Event).
+2026-08-24 06:39:17,342 [INFO] [MAPA] 'Montgomery' -> 'Montgomery'
+2026-08-24 06:39:17,344 [INFO] [MAPA] 'Augusta' -> 'Augusta'
+2026-08-24 06:39:17,345 [INFO] [MAPA] 'Jacksonville' -> 'Jacksonville'
+2026-08-24 06:39:17,794 [INFO] [DECYZJA] Farm: True | Init: False | Active: False
+2026-08-24 06:39:17,794 [INFO] [FARMING] Start modułu: farm_miasta.png
+2026-08-24 06:39:17,795 [INFO] --- URUCHAMIAM FARMING: farm_miasta.png ---
+2026-08-24 06:39:18,154 [INFO] Kliknięto: lista_pociagow.png
+2026-08-24 06:39:20,477 [INFO] Kliknięto: rozklad_zapisany.png
+2026-08-24 06:39:22,813 [INFO] Kliknięto: rozwiniecie_listy.png
+2026-08-24 06:39:25,136 [INFO] Kliknięto: wczytanie_listy.png
+2026-08-24 06:39:26,707 [INFO] Kliknięto: closed.png
+2026-08-24 06:39:32,708 [INFO] [FARMING] Rozkład magazynowy ustawiony.
+2026-08-24 06:39:32,708 [INFO] [FILLER] Czas wolny (Konkurs za 3942s). Video...
+2026-08-24 06:39:32,708 [INFO] [VIDEO] --- START CYKLU ---
+2026-08-24 06:39:35,145 [INFO] [VIDEO] Klikam: video_enabled.png
+2026-08-24 06:39:39,355 [INFO] [VIDEO] Film 1: Start.
+2026-08-24 06:39:44,242 [WARNING] [VIDEO] Nie widzę Play. Koniec.
+2026-08-24 06:39:44,852 [INFO] [DECYZJA] Farm: False | Init: True | Active: True
+2026-08-24 06:39:44,854 [INFO] Czekam 10s... (Gotowość)
